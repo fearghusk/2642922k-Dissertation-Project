@@ -17,21 +17,30 @@ def upload():
     filename = file.filename
     file.save(filename)
 
-    # Run OMER on the uploaded image
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
+    # Run OMER to generate MusicXML
     subprocess.run(["oemer", filename], check=True)
 
-    # The output MusicXML file will have same name but .musicxml extension
+    # Convert filename to .musicxml
     xml_file = filename.rsplit(".", 1)[0] + ".musicxml"
 
     if not os.path.exists(xml_file):
         return jsonify({"error": "No MusicXML generated"}), 500
 
-    return send_file(xml_file, as_attachment=True)
+    try:
+        from musicxml_parser import summarize_file
+        plain_text_summary = summarize_file(xml_file)
+    except Exception as e:
+        return jsonify({"error": f"Parsing failed: {str(e)}"}), 500
+
+    return jsonify({
+        "success": True,
+        "result": plain_text_summary
+    })
 
 # Start ngrok tunnel
 public_url = ngrok.connect(5000).public_url
 print("Server running at:", public_url)
 
 app.run(port=5000)
+
+
